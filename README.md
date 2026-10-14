@@ -295,6 +295,7 @@ information is collected.
 - Web framework: Streamlit (Apache 2.0 licence)
 
 **Project licence:** MIT — see [LICENSE](LICENSE) for full terms.
+For Streamlit app:https://sdg3-health-risk-prediction-hfm5njzl3cwcqcjqzrkqbi.streamlit.app/
 
 ---
 
