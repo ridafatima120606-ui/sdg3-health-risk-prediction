@@ -6,11 +6,6 @@ SDG 3 – Good Health and Well-being
 
 Streamlit web application.
 
-BEFORE RUNNING:
-    1. Run train_model.py to generate artifacts/model.pkl etc.
-    2. Then:  streamlit run app.py
-       OR open in Google Colab notebook.
-
 PRIVACY NOTE
 ------------
 This application does NOT store, log, transmit, or share any health
@@ -36,24 +31,85 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── Load artifacts ────────────────────────────────────────────────────────────
+# ── Paths ─────────────────────────────────────────────────────────────────────
 BASE_DIR      = os.path.dirname(os.path.abspath(__file__))
 ARTIFACTS_DIR = os.path.join(BASE_DIR, "artifacts")
+DATA_PATH     = os.path.join(BASE_DIR, "data", "diabetes.csv")
 
-@st.cache_resource(show_spinner="Loading model …")
-def load_artifacts():
-    paths = {
-        "model":   os.path.join(ARTIFACTS_DIR, "model.pkl"),
-        "scaler":  os.path.join(ARTIFACTS_DIR, "scaler.pkl"),
-        "metrics": os.path.join(ARTIFACTS_DIR, "metrics.pkl"),
+# ── Auto-train if artifacts are missing ───────────────────────────────────────
+def _train_and_save():
+    """Train the model from scratch and save artifacts. Called automatically."""
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.metrics import (accuracy_score, confusion_matrix,
+                                 f1_score, precision_score, recall_score)
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    import sklearn
+
+    RANDOM_SEED = 42
+    np.random.seed(RANDOM_SEED)
+    os.makedirs(ARTIFACTS_DIR, exist_ok=True)
+
+    df = pd.read_csv(DATA_PATH)
+
+    ZERO_INVALID_COLS = ["Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI"]
+    replacement_log = {}
+    for col in ZERO_INVALID_COLS:
+        zero_count = (df[col] == 0).sum()
+        median_val = df.loc[df[col] != 0, col].median()
+        df[col] = df[col].replace(0, median_val)
+        replacement_log[col] = {"zeros_replaced": int(zero_count),
+                                 "replacement_value": round(float(median_val), 2)}
+
+    FEATURE_COLUMNS = ["Pregnancies", "Glucose", "BloodPressure", "SkinThickness",
+                        "Insulin", "BMI", "DiabetesPedigreeFunction", "Age"]
+    X = df[FEATURE_COLUMNS]
+    y = df["Outcome"]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.20, random_state=RANDOM_SEED, stratify=y)
+
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train)
+    X_test_scaled  = scaler.transform(X_test)
+
+    model = RandomForestClassifier(n_estimators=100, random_state=RANDOM_SEED,
+                                   class_weight="balanced")
+    model.fit(X_train_scaled, y_train)
+
+    y_pred = model.predict(X_test_scaled)
+    metrics_dict = {
+        "accuracy":         accuracy_score(y_test, y_pred),
+        "precision":        precision_score(y_test, y_pred, zero_division=0),
+        "recall":           recall_score(y_test, y_pred, zero_division=0),
+        "f1":               f1_score(y_test, y_pred, zero_division=0),
+        "confusion_matrix": confusion_matrix(y_test, y_pred),
+        "feature_columns":  FEATURE_COLUMNS,
+        "random_seed":      RANDOM_SEED,
+        "sklearn_version":  sklearn.__version__,
+        "n_train":          len(X_train),
+        "n_test":           len(X_test),
+        "replacement_log":  replacement_log,
     }
-    missing = [k for k, v in paths.items() if not os.path.exists(v)]
-    if missing:
-        return None, None, None, missing
 
-    with open(paths["model"],   "rb") as f: model   = pickle.load(f)
-    with open(paths["scaler"],  "rb") as f: scaler  = pickle.load(f)
-    with open(paths["metrics"], "rb") as f: metrics = pickle.load(f)
+    with open(os.path.join(ARTIFACTS_DIR, "model.pkl"),   "wb") as f: pickle.dump(model,        f)
+    with open(os.path.join(ARTIFACTS_DIR, "scaler.pkl"),  "wb") as f: pickle.dump(scaler,       f)
+    with open(os.path.join(ARTIFACTS_DIR, "metrics.pkl"), "wb") as f: pickle.dump(metrics_dict, f)
+
+
+@st.cache_resource(show_spinner="Training model for first run — please wait …")
+def load_artifacts():
+    model_path   = os.path.join(ARTIFACTS_DIR, "model.pkl")
+    scaler_path  = os.path.join(ARTIFACTS_DIR, "scaler.pkl")
+    metrics_path = os.path.join(ARTIFACTS_DIR, "metrics.pkl")
+
+    # If any artifact is missing, train now
+    if not all(os.path.exists(p) for p in [model_path, scaler_path, metrics_path]):
+        _train_and_save()
+
+    with open(model_path,   "rb") as f: model   = pickle.load(f)
+    with open(scaler_path,  "rb") as f: scaler  = pickle.load(f)
+    with open(metrics_path, "rb") as f: metrics = pickle.load(f)
     return model, scaler, metrics, []
 
 model, scaler, metrics, missing_files = load_artifacts()
@@ -104,19 +160,7 @@ st.error(
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 3 — MODEL NOT READY
-# ─────────────────────────────────────────────────────────────────────────────
-if model is None:
-    st.warning(
-        f"**Model files not found:** `{', '.join(missing_files)}`\n\n"
-        "The trained model artifacts are missing. Please run the training script first:\n"
-        "```\npython train_model.py\n```\n"
-        "If you are using Google Colab, run all cells in the notebook first."
-    )
-    st.stop()
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 4 — PRIVACY NOTE
+#  SECTION 3 — PRIVACY NOTE
 # ─────────────────────────────────────────────────────────────────────────────
 with st.expander("🔒 Privacy Note", expanded=False):
     st.markdown(
@@ -135,7 +179,7 @@ with st.expander("🔒 Privacy Note", expanded=False):
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 5 — INPUT FIELDS
+#  SECTION 4 — INPUT FIELDS
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.subheader("📋 Enter Health Measurements")
@@ -195,7 +239,6 @@ with col2:
         help="Patient age in years. The dataset covers ages 21 and above.",
     )
 
-# Dataset population warning for out-of-range ages
 if age < 21:
     st.warning(
         "⚠️ The training dataset only included patients aged 21 and above. "
@@ -203,7 +246,7 @@ if age < 21:
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 6 — PREDICTION
+#  SECTION 5 — PREDICTION
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 predict_btn = st.button("🔍 Predict Risk", use_container_width=True, type="primary")
@@ -219,7 +262,6 @@ if predict_btn:
 
     st.subheader("📊 Model Classification Result")
 
-    # Result box
     if prediction == 1:
         st.error(
             f"**Model Classification: Higher-Risk Pattern**\n\n"
@@ -233,7 +275,6 @@ if predict_btn:
             f"match patterns associated with a negative diabetes indicator in the training data."
         )
 
-    # Interpretation note
     st.info(
         "**What this result means:**\n\n"
         "This is a machine-learning classification, not a medical diagnosis. "
@@ -245,7 +286,6 @@ if predict_btn:
         "Please speak with a healthcare professional for a proper assessment."
     )
 
-    # Probability chart
     fig_p, ax_p = plt.subplots(figsize=(5, 2))
     ax_p.barh(["Lower-Risk Pattern", "Higher-Risk Pattern"],
               [prob_no, prob_yes],
@@ -259,7 +299,6 @@ if predict_btn:
     st.pyplot(fig_p)
     plt.close(fig_p)
 
-    # Awareness section
     st.markdown("---")
     st.subheader("💡 General Health Awareness Information")
     st.markdown(
@@ -281,7 +320,7 @@ if predict_btn:
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 7 — MODEL PERFORMANCE
+#  SECTION 6 — MODEL PERFORMANCE
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.subheader("📈 Model Performance (Genuine Evaluation Results)")
@@ -316,13 +355,12 @@ with st.expander("📖 What do these metrics mean?"):
         """
     )
 
-# Confusion matrix
+cm = m["confusion_matrix"]
 st.markdown("**Confusion Matrix**")
 st.markdown(
     "Each cell shows how many predictions the model made in each category. "
     "The diagonal (top-left, bottom-right) represents correct predictions."
 )
-cm = m["confusion_matrix"]
 fig_cm, ax_cm = plt.subplots(figsize=(4.5, 3.5))
 im = ax_cm.imshow(cm, cmap="Blues", interpolation="nearest")
 ax_cm.set_title("Confusion Matrix (Test Set)")
@@ -340,7 +378,7 @@ st.pyplot(fig_cm)
 plt.close(fig_cm)
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  SECTION 8 — METHODOLOGY AND LIMITATIONS
+#  SECTION 7 — METHODOLOGY AND LIMITATIONS
 # ─────────────────────────────────────────────────────────────────────────────
 st.markdown("---")
 st.subheader("🔬 Methodology & Limitations")
