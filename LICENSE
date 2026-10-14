@@ -1,0 +1,54 @@
+MIT License
+
+Copyright (c) 2024 [Your Full Name] — Student Project
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+────────────────────────────────────────────────────────────────────────────────
+PLAIN-ENGLISH EXPLANATION (this section is not part of the legal license text)
+────────────────────────────────────────────────────────────────────────────────
+
+The MIT License is one of the most permissive open-source licenses available.
+In simple terms it means:
+
+✓ Anyone can use this code for free, including for commercial purposes.
+✓ Anyone can copy, modify, and distribute this code.
+✓ Anyone can include this code in their own projects.
+✗ The author (you) is NOT liable for any problems caused by the software.
+✗ No warranty is provided — the software is given "as is".
+
+The only requirement is that if someone distributes your code (or software
+built from it), they must include the original copyright notice and the license
+text above.
+
+WHY MIT IS APPROPRIATE HERE
+────────────────────────────
+This is an educational student project with no commercial intent. The MIT
+License signals openness, encourages peer review, and is widely recognised
+by academic institutions and the open-source community.
+
+DATASET LICENSING NOTE
+──────────────────────
+The Pima Indians Diabetes Database is hosted on Kaggle under the CC0 1.0
+Universal (Public Domain Dedication) licence, which permits unrestricted use.
+Original data source: National Institute of Diabetes and Digestive and
+Kidney Diseases (NIDDK), USA. This licence applies to the dataset only, not
+to this project code.
+
+Reference: https://www.kaggle.com/datasets/uciml/pima-indians-diabetes-database
